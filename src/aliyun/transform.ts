@@ -6,9 +6,8 @@
  */
 
 import { Headers, Request, Response } from 'node-fetch';
-import getRawBody from 'raw-body';
 import { URL } from 'url';
-import { AliyunRequest, AliyunResponse } from './types';
+import { AliyunRequest } from './types';
 
 /**
  * aliyunReq2nodeReq
@@ -20,33 +19,28 @@ export async function aliyunReq2nodeReq(
     aliyunReq: AliyunRequest,
     useRealPath = false
 ): Promise<Request> {
-    const { path, headers, method, queries } = aliyunReq;
+    const { requestContext, headers, queryParameters, body } = aliyunReq;
     const url = new URL(`http://127.0.0.1/`);
-    url.protocol = headers['x-forwarded-proto'];
-    url.host = headers['host'];
-    url.pathname = aliyunReq.url;
+    url.protocol = headers['X-Forwarded-Proto'];
+    url.host = requestContext.domainName;
+    // url.pathname = aliyunReq.url;
     // `${}://${headers['host']}${aliyunReq.url}`
-    for (const k in queries) {
-        url.searchParams.set(k, queries[k]);
+    for (const k in queryParameters) {
+        url.searchParams.set(k, queryParameters[k]);
     }
     if (!useRealPath) {
-        url.pathname = path;
-    }
-    let body: Buffer | undefined = undefined;
-    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-        body = await getRawBody(aliyunReq);
+        url.pathname = requestContext.http.path;
     }
     const h = new Headers(headers);
-    ['host'].forEach((v) => {
+    ['Host'].forEach((v) => {
         h.delete(v);
     });
-    const req = new Request(url, { headers: h, method, body });
+    const req = new Request(url, { headers: h, method: requestContext.http.method, body });
     return req;
 }
 
 export async function nodeResp2aliyunResp(
     resp: Response,
-    aliyunResp: AliyunResponse
 ) {
     const headers = new Headers(resp.headers);
     [
@@ -59,9 +53,18 @@ export async function nodeResp2aliyunResp(
     ].forEach((v) => {
         headers.delete(v);
     });
+
+    const aliyunHeaders: Record<string, string> = {}
     headers.forEach((value, name) => {
-        aliyunResp.setHeader(name, value);
+      aliyunHeaders[name] = value;
     });
-    aliyunResp.setStatusCode(resp.status);
-    aliyunResp.send(await resp.buffer());
+    const body = await resp.text()
+    const aliyunResp = {
+      statusCode: resp.status,
+      headers: aliyunHeaders,
+      body
+    }
+    console.log('resp', JSON.stringify(aliyunResp))
+
+    return aliyunResp
 }

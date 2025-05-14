@@ -41,7 +41,7 @@ pnpm run build
 
 然后把除了 .git 和 node_modules 的所有文件压缩成一个 any_name.zip
 
-然后在 函数计算 香港地区 新建一个 node14 HTTP函数，配置函数入口 index.aliyunHandler
+然后在 函数计算 香港地区 新建一个 node18 HTTP函数，配置函数入口 index.aliyunHandler
 
 上传刚刚的压缩包即可部署，后续可以绑定自定义域名
 
